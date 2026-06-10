@@ -1,6 +1,12 @@
 
 import Navbar from "../components/Navbar";
 import { useState, useEffect } from "react";
+
+import {
+  requestPermission,
+  scheduleReminder,
+} from "../notifications";
+
 import {
   collection,
   addDoc,
@@ -16,9 +22,14 @@ import { auth, db } from "../firebase";
 
 function StudyPlanner() {
   const [task, setTask] = useState("");
+  const [reminderDate, setReminderDate] =
+    useState("");
+  const [reminderTime, setReminderTime] =
+    useState("");
   const [tasks, setTasks] = useState([]);
 
   useEffect(() => {
+    requestPermission();
     loadTasks();
   }, []);
 
@@ -43,20 +54,46 @@ function StudyPlanner() {
   };
 
   const addTask = async () => {
-    if (!task) return;
+    if (
+      !task ||
+      !reminderDate ||
+      !reminderTime
+    ) {
+      alert(
+        "Please enter task, date and time"
+      );
+      return;
+    }
 
     const user = auth.currentUser;
 
-    await addDoc(collection(db, "studyTasks"), {
+    await addDoc(
+      collection(db, "studyTasks"),
+      {
+        task,
+        completed: false,
+        reminderDate,
+        reminderTime,
+        userId: user.uid,
+        createdAt: new Date(),
+      }
+    );
+
+    await scheduleReminder(
+      "📚 Study Reminder",
       task,
-      completed: false,
-      userId: user.uid,
-      createdAt: new Date(),
-    });
+      Date.now()
+    );
 
     setTask("");
+    setReminderDate("");
+    setReminderTime("");
 
     loadTasks();
+
+    alert(
+      "Task saved with reminder"
+    );
   };
 
   const deleteTask = async (id) => {
@@ -98,7 +135,7 @@ function StudyPlanner() {
 
       <div
         style={{
-          padding: "30px",
+          padding: "20px",
           maxWidth: "700px",
           margin: "auto",
         }}
@@ -106,30 +143,60 @@ function StudyPlanner() {
         <h1>📚 Study Planner</h1>
 
         <input
-          placeholder="New Task"
+          placeholder="Task Name"
           value={task}
           onChange={(e) =>
             setTask(e.target.value)
           }
+          style={{
+            width: "100%",
+            padding: "12px",
+            marginBottom: "10px",
+          }}
+        />
+
+        <input
+          type="date"
+          value={reminderDate}
+          onChange={(e) =>
+            setReminderDate(e.target.value)
+          }
+          style={{
+            width: "100%",
+            padding: "12px",
+            marginBottom: "10px",
+          }}
+        />
+
+        <input
+          type="time"
+          value={reminderTime}
+          onChange={(e) =>
+            setReminderTime(e.target.value)
+          }
+          style={{
+            width: "100%",
+            padding: "12px",
+            marginBottom: "10px",
+          }}
         />
 
         <button
           onClick={addTask}
           style={{
-            marginLeft: "10px",
+            padding: "12px",
+            width: "100%",
           }}
         >
-          Add Task
+          Add Task + Reminder
         </button>
 
         <hr />
 
-        <h2>
-          Progress: {progress}%
-        </h2>
+        <h2>Progress: {progress}%</h2>
 
         <p>
-          Completed: {completedCount} /
+          Completed {completedCount} /{" "}
           {tasks.length}
         </p>
 
@@ -139,10 +206,10 @@ function StudyPlanner() {
           <div
             key={t.id}
             style={{
-              marginBottom: "12px",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
+              border: "1px solid #ddd",
+              padding: "15px",
+              borderRadius: "10px",
+              marginBottom: "10px",
             }}
           >
             <input
@@ -158,13 +225,18 @@ function StudyPlanner() {
 
             <span
               style={{
-                textDecoration: t.completed
-                  ? "line-through"
-                  : "none",
+                marginLeft: "10px",
+                textDecoration:
+                  t.completed
+                    ? "line-through"
+                    : "none",
               }}
             >
               {t.task}
             </span>
+
+            <p>📅 {t.reminderDate}</p>
+            <p>⏰ {t.reminderTime}</p>
 
             <button
               onClick={() =>

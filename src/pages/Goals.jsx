@@ -9,6 +9,7 @@ import {
   doc,
   query,
   where,
+  updateDoc,
 } from "firebase/firestore";
 
 import { db, auth } from "../firebase";
@@ -17,6 +18,7 @@ function Goals() {
   const [goalName, setGoalName] = useState("");
   const [target, setTarget] = useState("");
   const [current, setCurrent] = useState("");
+  const [dueDate, setDueDate] = useState("");
 
   const [goals, setGoals] = useState([]);
 
@@ -50,8 +52,13 @@ function Goals() {
   };
 
   const addGoal = async () => {
-    if (!goalName || !target || !current) {
-      alert("Fill all fields");
+    if (
+      !goalName ||
+      !target ||
+      !current ||
+      !dueDate
+    ) {
+      alert("Please fill all fields");
       return;
     }
 
@@ -62,6 +69,8 @@ function Goals() {
         name: goalName,
         target: Number(target),
         current: Number(current),
+        dueDate,
+        completed: false,
         userId: user.uid,
         createdAt: new Date(),
       });
@@ -69,6 +78,7 @@ function Goals() {
       setGoalName("");
       setTarget("");
       setCurrent("");
+      setDueDate("");
 
       loadGoals();
     } catch (error) {
@@ -88,24 +98,67 @@ function Goals() {
     }
   };
 
+  const updateProgress = async (
+    id,
+    current,
+    target
+  ) => {
+    const newValue = prompt(
+      "Enter Current Progress",
+      current
+    );
+
+    if (!newValue) return;
+
+    const progress =
+      (Number(newValue) / Number(target)) *
+      100;
+
+    try {
+      await updateDoc(
+        doc(db, "goals", id),
+        {
+          current: Number(newValue),
+          completed: progress >= 100,
+        }
+      );
+
+      loadGoals();
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    }
+  };
+
+  const activeGoals = goals.filter(
+    (goal) => !goal.completed
+  ).length;
+
   return (
     <div>
       <Navbar />
 
       <div
         style={{
-          maxWidth: "900px",
+          maxWidth: "700px",
           margin: "auto",
-          padding: "30px",
+          padding: "20px",
         }}
       >
-        <h1>🎯 Goals</h1>
+        <h1
+          style={{
+            textAlign: "center",
+          }}
+        >
+          🎯 Goals Tracker
+        </h1>
 
         <div
           style={{
             display: "flex",
-            gap: "10px",
-            marginBottom: "20px",
+            flexDirection: "column",
+            gap: "12px",
+            marginBottom: "25px",
           }}
         >
           <input
@@ -114,6 +167,10 @@ function Goals() {
             onChange={(e) =>
               setGoalName(e.target.value)
             }
+            style={{
+              padding: "12px",
+              borderRadius: "10px",
+            }}
           />
 
           <input
@@ -123,20 +180,72 @@ function Goals() {
             onChange={(e) =>
               setTarget(e.target.value)
             }
+            style={{
+              padding: "12px",
+              borderRadius: "10px",
+            }}
           />
 
           <input
             type="number"
-            placeholder="Current"
+            placeholder="Current Progress"
             value={current}
             onChange={(e) =>
               setCurrent(e.target.value)
             }
+            style={{
+              padding: "12px",
+              borderRadius: "10px",
+            }}
           />
 
-          <button onClick={addGoal}>
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) =>
+              setDueDate(e.target.value)
+            }
+            style={{
+              padding: "12px",
+              borderRadius: "10px",
+            }}
+          />
+
+          <button
+            onClick={addGoal}
+            style={{
+              padding: "14px",
+              borderRadius: "10px",
+              border: "none",
+              background: "#2563eb",
+              color: "white",
+              fontWeight: "bold",
+              cursor: "pointer",
+            }}
+          >
             Add Goal
           </button>
+        </div>
+
+        <div
+          style={{
+            marginBottom: "20px",
+            padding: "15px",
+            borderRadius: "15px",
+            background: "#f1f5f9",
+          }}
+        >
+          <h3>
+            Active Goals:
+            {" "}
+            {activeGoals}
+          </h3>
+
+          <h3>
+            Total Goals:
+            {" "}
+            {goals.length}
+          </h3>
         </div>
 
         {goals.length === 0 ? (
@@ -146,7 +255,9 @@ function Goals() {
             const progress = Math.min(
               100,
               Math.round(
-                (goal.current / goal.target) * 100
+                (goal.current /
+                  goal.target) *
+                  100
               )
             );
 
@@ -155,30 +266,54 @@ function Goals() {
                 key={goal.id}
                 style={{
                   padding: "20px",
-                  border: "1px solid #444",
-                  borderRadius: "10px",
+                  border:
+                    "1px solid #ddd",
+                  borderRadius: "15px",
                   marginBottom: "20px",
+                  background:
+                    "#f8fafc",
                 }}
               >
-                <h3>{goal.name}</h3>
+                <h2>
+                  {goal.completed
+                    ? "✅ "
+                    : "🎯 "}
+                  {goal.name}
+                </h2>
 
                 <p>
-                  {goal.current} / {goal.target}
+                  Progress:
+                  {" "}
+                  {goal.current}
+                  /
+                  {goal.target}
+                </p>
+
+                <p>
+                  Due Date:
+                  {" "}
+                  {goal.dueDate}
                 </p>
 
                 <div
                   style={{
-                    background: "#333",
+                    background:
+                      "#e5e7eb",
                     height: "20px",
-                    borderRadius: "10px",
-                    overflow: "hidden",
+                    borderRadius:
+                      "10px",
+                    overflow:
+                      "hidden",
                   }}
                 >
                   <div
                     style={{
                       width: `${progress}%`,
                       height: "100%",
-                      background: "#4caf50",
+                      background:
+                        progress >= 100
+                          ? "#16a34a"
+                          : "#2563eb",
                     }}
                   />
                 </div>
@@ -186,18 +321,58 @@ function Goals() {
                 <p
                   style={{
                     marginTop: "10px",
+                    fontWeight:
+                      "bold",
                   }}
                 >
-                  {progress}% Completed
+                  {progress}%
+                  Completed
                 </p>
 
-                <button
-                  onClick={() =>
-                    deleteGoal(goal.id)
-                  }
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "10px",
+                    flexWrap:
+                      "wrap",
+                  }}
                 >
-                  Delete
-                </button>
+                  <button
+                    onClick={() =>
+                      updateProgress(
+                        goal.id,
+                        goal.current,
+                        goal.target
+                      )
+                    }
+                    style={{
+                      padding:
+                        "10px 15px",
+                    }}
+                  >
+                    Update Progress
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      deleteGoal(
+                        goal.id
+                      )
+                    }
+                    style={{
+                      padding:
+                        "10px 15px",
+                      background:
+                        "#dc2626",
+                      color:
+                        "white",
+                      border:
+                        "none",
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             );
           })

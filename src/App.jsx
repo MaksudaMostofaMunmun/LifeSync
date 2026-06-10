@@ -1,4 +1,8 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
+
+import { auth } from "./firebase";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -7,39 +11,93 @@ import StudyPlanner from "./pages/StudyPlanner";
 import ExpenseTracker from "./pages/ExpenseTracker";
 import Goals from "./pages/Goals";
 
-
 function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (currentUser) => {
+        setUser(currentUser);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  if (loading) {
+    return <h2>Loading...</h2>;
+  }
+
   return (
     <BrowserRouter>
       <Routes>
         <Route
           path="/"
-          element={<Login />}
+          element={
+            user ? (
+              <Navigate to="/dashboard" />
+            ) : (
+              <Login />
+            )
+          }
         />
 
         <Route
           path="/dashboard"
-          element={<Dashboard />}
+          element={
+            user ? (
+              <Dashboard />
+            ) : (
+              <Navigate to="/" />
+            )
+          }
         />
 
         <Route
           path="/bazaar"
-          element={<Bazaar />}
+          element={
+            user ? (
+              <Bazaar />
+            ) : (
+              <Navigate to="/" />
+            )
+          }
         />
 
         <Route
           path="/study"
-          element={<StudyPlanner />}
+          element={
+            user ? (
+              <StudyPlanner />
+            ) : (
+              <Navigate to="/" />
+            )
+          }
         />
 
         <Route
           path="/expense"
-          element={<ExpenseTracker />}
+          element={
+            user ? (
+              <ExpenseTracker />
+            ) : (
+              <Navigate to="/" />
+            )
+          }
         />
 
         <Route
           path="/goals"
-          element={<Goals />}
+          element={
+            user ? (
+              <Goals />
+            ) : (
+              <Navigate to="/" />
+            )
+          }
         />
       </Routes>
     </BrowserRouter>

@@ -1,3 +1,4 @@
+import { onAuthStateChanged } from "firebase/auth";
 import { useState } from "react";
 import { auth } from "../firebase";
 import {
@@ -111,6 +112,21 @@ function Login() {
       </div>
     </div>
   );
+
+  useEffect(() => {
+  const unsubscribe =
+    onAuthStateChanged(
+      auth,
+      (user) => {
+        if (user) {
+          navigate("/dashboard");
+        }
+      }
+    );
+
+  return unsubscribe;
+}, []);
+
 }
 
 export default Login;
